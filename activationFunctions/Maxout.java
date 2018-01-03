@@ -1,10 +1,15 @@
 package activationFunctions;
 
+import java.util.Arrays;
+
 public class Maxout extends ActivationFunction {
+	private static final long serialVersionUID = 1L;
+
 	public Maxout() {
+
 	}
 
-	public double[] activationOutputArray(double[] inputs) {
+	public double[] activationOutputVector(double[] inputs) {
 		double maxNum = inputs[0];
 		int maxIndex = 0;
 
@@ -16,23 +21,23 @@ public class Maxout extends ActivationFunction {
 		}
 
 		double[] output = new double[inputs.length];
-		for (int i = 0; i < inputs.length; i++) {
-			if (i == maxIndex) {
-				output[i] = maxNum;
+		Arrays.fill(output, 0.0);
+		output[maxIndex] = maxNum;
+		return output;
+	}
+
+	public double[] derivativeVector(double outputHolder[], double[] inputHolder) {
+		double[] output = new double[outputHolder.length];
+		for (int i = 0; i < outputHolder.length; i++) {
+			if (outputHolder[i] != 0) {
+				output[i] = 1;
 			} else
-				output[i] = 0;
+				output[i] = 1;
 		}
 		return output;
 	}
 
-	public double[] derivativeArray(double outputHolder[], double[] inputHolder) {
-		double[] output = new double[outputHolder.length];
-		for (int i = 0; i < outputHolder.length; i++) {
-			if (outputHolder[i]!=0) {
-				output[i] = 1;				
-			}
-			else output[i] = 0;
-		}
-		return output;
+	public boolean returnVectorOutput() {
+		return true;
 	}
 }

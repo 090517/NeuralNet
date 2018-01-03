@@ -2,10 +2,13 @@ package activationFunctions;
 
 
 public class Softmax extends ActivationFunction{
+	private static final long serialVersionUID = 1L;
+	public final boolean VectorOutput = true;
+
 	public Softmax() {
 	}
 
-	public double[] activationOutputArray(double[] inputs) {
+	public double[] activationOutputVector(double[] inputs) {
 		double[] expInput = new double[inputs.length];
 
 		double sum = 0;
@@ -22,7 +25,7 @@ public class Softmax extends ActivationFunction{
 		return output;
 	}
 
-	public double[] derivativeArray(double outputHolder[], double[] inputHolder) {
+	public double[] derivativeVector(double outputHolder[], double[] inputHolder) {
 			//todo
 		return null;
 	}

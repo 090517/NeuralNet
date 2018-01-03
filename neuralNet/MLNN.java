@@ -26,56 +26,93 @@ public class MLNN extends JFrame implements Serializable {
 	double error;
 	public int rounds;
 	public int totalRounds;
-	Layer[] hiddenLayers;
+	ArrayList<Layer> hiddenLayers;
 	Layer outputLayer;
 	XYSeries errorHistory;
 
-	Layer[] bestHiddenLayers;
+	ArrayList<Layer> bestHiddenLayers;
 	Layer bestOutPutLayer;
 	double bestError;
 	boolean bestLoaded;
+	double learningRate;
+	double momentum;
 
 	public MLNN(int[] nnHiddenArrangment, int inputs, int outputs, ActivationFunction[] AFArray, boolean[] bias,
-			double newLearningRate) {
+			double newLearningRate, double newMometum) {
+		
+		if (!checkValidMLNN(nnHiddenArrangment, inputs, outputs, AFArray, bias)) {
+			System.out.println("INVALID NN ARRANGMENT, CHECK");
+		};
+		
 		error = 0;
 		bestError = Double.MAX_VALUE;
 		rounds = 0;
 		totalRounds = 0;
 		errorHistory = new XYSeries("Error History");
-		hiddenLayers = new Layer[nnHiddenArrangment.length];
+		hiddenLayers = new ArrayList<Layer>();
 		bestLoaded = false;
+
+		// Creation of hidden Layer arraylist
 		int prevInputs = inputs;
-
 		for (int i = 0; i < nnHiddenArrangment.length; i++) {
-			hiddenLayers[i] = new Layer(nnHiddenArrangment[i], prevInputs, AFArray[i], bias[i], bias[i + 1],
-					newLearningRate);
-			prevInputs = nnHiddenArrangment[i];
+			hiddenLayers.add(
+					new Layer(nnHiddenArrangment[i], prevInputs, AFArray[i], bias[i], bias[i + 1], newLearningRate, newMometum));
+			if (!AFArray[i].returnVectorOutput()) {// need to change to passthrough check
+				prevInputs = nnHiddenArrangment[i];
+			}
 		}
-		outputLayer = new Layer(outputs, prevInputs, AFArray[AFArray.length - 1], bias[AFArray.length - 1], false,
-				newLearningRate);
-
+		
+		if (AFArray[AFArray.length - 1].returnVectorOutput()) {
+			outputLayer = new Layer(1, prevInputs, AFArray[AFArray.length - 1], bias[AFArray.length - 1], false,
+					newLearningRate, newMometum);
+		} else {
+			outputLayer = new Layer(outputs, prevInputs, AFArray[AFArray.length - 1], bias[AFArray.length - 1], false,
+					newLearningRate, newMometum);
+		}
+	}
+	
+	public MLNN(int[] nnHiddenArrangment, int inputs, int outputs, ActivationFunction[] AFArray, boolean[] bias,
+			double newLearningRate) {
+		this( nnHiddenArrangment,  inputs,  outputs,  AFArray,  bias, newLearningRate, 0);
+	}
+	
+	/**what layers have requirments
+	 * Maxout Layer - input must equal output size - i.e at output layer
+	 */
+	
+	private boolean checkValidMLNN(int[] nnHiddenArrangment, int inputs, int outputs, ActivationFunction[] aFArray,
+			boolean[] bias) {	
+		if (aFArray[aFArray.length-1].returnVectorOutput()){
+			if (outputs!=nnHiddenArrangment[nnHiddenArrangment.length-1]) {
+				return false;
+			}
+		}
+		return true;
 	}
 
-	public MLNN() {
-		// TODO Auto-generated constructor stub
+	// regulars
+
+	public MLNN() {//empty constructor for testing purposes
 	}
 
-	public double[] forwardProp(double[] input, double[] ideal) {
-		for (int i = 0; i < hiddenLayers.length; i++) {
-			input = hiddenLayers[i].forwardProp(input);
+	public double[] forwardPropWError(double[] input, double[] ideal) {
+		for (int i = 0; i < hiddenLayers.size(); i++) {
+			input = hiddenLayers.get(i).forwardProp(input);
 		}
+		 input = outputLayer.forwardProp(input);
 		// errorcalc
-		for (int i = 0; i < ideal.length; i++) {
-			this.error += .5 * Math.pow(ideal[i] - outputLayer.neuronArray.get(i).outputHolder, 2);
-		}
+		
+			for (int i = 0; i < ideal.length; i++) {
+				this.error += .5 * Math.pow(ideal[i] - input[i],2);
+			}
 		rounds++;
 		totalRounds++;
-		return outputLayer.forwardProp(input);
+		return input;
 	}
 
 	public double[] forwardProp(double[] input) {
-		for (int i = 0; i < hiddenLayers.length; i++) {
-			input = hiddenLayers[i].forwardProp(input);
+		for (int i = 0; i < hiddenLayers.size(); i++) {
+			input = hiddenLayers.get(i).forwardProp(input);
 		}
 		return outputLayer.forwardProp(input);
 	}
@@ -97,28 +134,39 @@ public class MLNN extends JFrame implements Serializable {
 	public void backProp(double[] ideal) {
 		outputLayer.backPropOutputLayer(ideal);
 		Layer prevLayer = outputLayer;
-		for (int i = hiddenLayers.length - 1; i >= 0; i--) {
-			hiddenLayers[i].backPropHiddenLayer(prevLayer);
-			prevLayer = hiddenLayers[i];
+		for (int i = hiddenLayers.size() - 1; i >= 0; i--) {
+			hiddenLayers.get(i).backPropHiddenLayer(prevLayer);
+			prevLayer = hiddenLayers.get(i);
 		}
 		outputLayer.updateWeights();
-		for (int i = 0; i < hiddenLayers.length; i++) {
-			hiddenLayers[i].updateWeights();
+		for (int i = 0; i < hiddenLayers.size(); i++) {
+			hiddenLayers.get(i).updateWeights();
 		}
 	}
 
-	public void setWeights(int layer, double[][] weights) {
-		if (layer > hiddenLayers.length) {
+	public void setWeights(int layerIdx, double[][] weights) {
+		if (layerIdx > hiddenLayers.size() - 1) {
 			outputLayer.setWeights(weights);
 		} else {
-			hiddenLayers[layer - 1].setWeights(weights);
+			hiddenLayers.get(layerIdx).setWeights(weights);
 		}
+	}
+
+	public void resetNN() {
+		outputLayer.reset();
+		for (Layer l : hiddenLayers) {
+			l.reset();
+		}
+		error = rounds = totalRounds = 0;
+		bestError = Double.MAX_VALUE;
+		errorHistory = new XYSeries("Error History");
+		bestLoaded = false;
 	}
 
 	public void loadBest() {
 		if (!bestLoaded) {
 			Layer tempLayer = outputLayer;
-			Layer[] tempHiddenLayers = hiddenLayers;
+			ArrayList<Layer> tempHiddenLayers = hiddenLayers;
 			outputLayer = bestOutPutLayer;
 			hiddenLayers = bestHiddenLayers;
 			bestOutPutLayer = tempLayer;
@@ -130,7 +178,7 @@ public class MLNN extends JFrame implements Serializable {
 	public void loadCurrent() {
 		if (bestLoaded) {
 			Layer tempLayer = outputLayer;
-			Layer[] tempHiddenLayers = hiddenLayers;
+			ArrayList<Layer> tempHiddenLayers = hiddenLayers;
 			outputLayer = bestOutPutLayer;
 			hiddenLayers = bestHiddenLayers;
 			bestOutPutLayer = tempLayer;
@@ -139,42 +187,73 @@ public class MLNN extends JFrame implements Serializable {
 		}
 	}
 
-	// removes neurons are weighed small in the next layer.
+	// Neuron Methods
+
+	public void addNeuron(int layer, int index, Neuron newNeuron) {
+		
+		
+
+	}
+
+	public void removeNeuron(int layer, int index) {
+		hiddenLayers.get(layer).removeNeuron(index);
+		hiddenLayers.get(layer+1).removeWeights(index);;
+	}
+
+	// Layer Methods
+	
+	//todo need to update weights for other layers besides inserted ones.
+	public void addLayer(int index, int numNeurons, ActivationFunction AF, boolean thisLayerBias) {
+		//if last layer, need to replace
+		if ((index-1)>hiddenLayers.size()) {
+			hiddenLayers.add(outputLayer);
+			outputLayer=new Layer(numNeurons, hiddenLayers.get(index-1).neuronArray.size(), AF, hiddenLayers.get(index-1).bias, thisLayerBias, learningRate, momentum);
+		}
+		else {
+		//else need to insert
+		hiddenLayers.add(index, new Layer(numNeurons, hiddenLayers.get(index-1).neuronArray.size(), AF, hiddenLayers.get(index-1).bias, thisLayerBias, learningRate, momentum));
+		}
+	}
+
+	public void removeLayer(int index) {}
+	
+	// Mutation Methods TODO
 	public void trimNeurons(double threshold) {
+		// removes neurons are weighed small in the next layer. TODO
 		ArrayList<Integer> neuronsToDelete = new ArrayList<Integer>();
-		for (int i = 0; i < hiddenLayers[hiddenLayers.length-1].neuronArray.size(); i++) {
+		for (int i = 0; i < hiddenLayers.get(hiddenLayers.size() - 1).neuronArray.size(); i++) {
 			for (int j = 0; j < outputLayer.neuronArray.size(); j++) {
-				if (outputLayer.neuronArray.get(j).weights[i] > threshold) {
+				if (outputLayer.neuronArray.get(j).weights.get(i) > threshold) {
 					break;
 				}
-				if (j==outputLayer.neuronArray.size()-1) {
+				if (j == outputLayer.neuronArray.size() - 1) {
 					System.out.println("neruon added" + i);
 					neuronsToDelete.add(i);
 				}
-			}			
+			}
 		}
 
 		// todo delete neruosn. Maybe need to rewright everything as arraylist
 
 		neuronsToDelete = new ArrayList<Integer>();
-		for (int layer = hiddenLayers.length-1; layer > 1; layer--) {
-			for (int i = 0; i < hiddenLayers[layer-1].neuronArray.size(); i++) {
-				for (int j = 0; j < hiddenLayers[layer].neuronArray.size(); j++) {
-					if (hiddenLayers[layer].neuronArray.get(j).weights[i] > threshold) {
+		for (int layer = hiddenLayers.size() - 1; layer > 1; layer--) {
+			for (int i = 0; i < hiddenLayers.get(layer - 1).neuronArray.size(); i++) {
+				for (int j = 0; j < hiddenLayers.get(layer).neuronArray.size(); j++) {
+					if (hiddenLayers.get(layer).neuronArray.get(j).weights.get(i) > threshold) {
 						break;
 					}
-					System.out.print(hiddenLayers[layer].neuronArray.get(j).weights[i]+"\t");
-					if (j==hiddenLayers[layer].neuronArray.size()-1) {
+					System.out.print(hiddenLayers.get(layer).neuronArray.get(j).weights.get(i) + "\t");
+					if (j == hiddenLayers.get(layer).neuronArray.size() - 1) {
 						System.out.println("neruon added" + i);
 						neuronsToDelete.add(i);
 					}
 				}
 			}
-			// todo delete neruosn. Maybe need to rewright everything as arraylist			
+			// todo delete neruosn. Maybe need to rewright everything as arraylist
 		}
-
-
 	}
+
+	// Utility Functions
 
 	public void saveNN(String filename) {
 		try {
@@ -206,15 +285,14 @@ public class MLNN extends JFrame implements Serializable {
 		} catch (IOException e) {
 			System.out.println("IO exception.  Read method.");
 		}
+		System.out.println("Error, Returned Null");
 		return null;
 	}
 
 	public void plotErrors() {
 		XYSeriesCollection dataset = new XYSeriesCollection();
 		dataset.addSeries(errorHistory);
-
 		JFreeChart chart = ChartFactory.createScatterPlot("Errors Vs Epochs", "Training Rounds", "Errors", dataset);
-
 		// Changes background color
 		XYPlot plot = (XYPlot) chart.getPlot();
 		plot.setBackgroundPaint(new Color(255, 228, 196));
@@ -222,11 +300,41 @@ public class MLNN extends JFrame implements Serializable {
 		// Create Panel
 		ChartPanel panel = new ChartPanel(chart);
 		setContentPane(panel);
-		// ScatterPlotExample example = new ScatterPlotExample("Scatter Chart Example |
-		// BORAJI.COM");
 		this.setSize(1200, 1000);
 		this.setLocationRelativeTo(null);
 		this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		this.setVisible(true);
 	}
+
+	public void printNN() {
+		for (int i = 0; i < hiddenLayers.size(); i++) {
+			hiddenLayers.get(i).printLayer();
+		}
+		outputLayer.printLayer();
+	}
+
+	// Multithreading code TODO
+
+	public double[] forwardPropMulti(double[] input, double[] ideal) throws Exception {
+		for (int i = 0; i < hiddenLayers.size(); i++) {
+			input = hiddenLayers.get(i).forwardProp(input);
+		}
+		// errorcalc
+		for (int i = 0; i < ideal.length; i++) {
+			this.error += .5 * Math.pow(ideal[i] - outputLayer.neuronArray.get(i).outputHolder, 2);
+		}
+		rounds++;
+		totalRounds++;
+		return outputLayer.forwardProp(input);
+	}
+
+	public double[] forwardPropMulti(double[] input) throws Exception {
+		for (int i = 0; i < hiddenLayers.size(); i++) {
+			input = hiddenLayers.get(i).forwardProp(input);
+		}
+		return outputLayer.forwardProp(input);
+	}
+
+
+
 }

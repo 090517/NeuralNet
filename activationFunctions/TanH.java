@@ -1,6 +1,8 @@
 package activationFunctions;
 
 public class TanH extends ActivationFunction{
+	private static final long serialVersionUID = 1L;
+
 	
 	public TanH() {}
 	

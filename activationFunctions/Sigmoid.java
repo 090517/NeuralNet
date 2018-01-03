@@ -1,6 +1,8 @@
 package activationFunctions;
 
 public class Sigmoid extends ActivationFunction{
+	private static final long serialVersionUID = 1L;
+
 	
 	public Sigmoid() {}
 	

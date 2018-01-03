@@ -1,0 +1,30 @@
+Overall Objective:  Create a NN library that I can use to a variety of problems
+
+Goals:
+1.  Add mutation and diversification methods//
+
+2.  Add consal control over growth and teaching. - I.E after it locally optimizes, hit esc to stop learning and mutate the NN
+3.  Add macro multi threaded support - i.e each tread has it's own NN)
+4.  Add mega-neuron support - input layers and final layers.  All in all out.
+     Todo:  Add softmax and do write about maxout helping classification error
+
+
+Features to Add.
+
+1.  Feedback
+2.  Neurons
+https://eli.thegreenplace.net/2016/the-softmax-function-and-its-derivative/
+3.  https://blog.coast.ai/lets-evolve-a-neural-network-with-a-genetic-algorithm-code-included-8809bece164
+http://peterroelants.github.io/posts/neural_network_implementation_part04/
+
+
+BRainstorming
+How do you know if you are in a local maximum:
+1.  The weights don't change - sufficient 
+2.  The error rate doesn't change - neccessary
+
+Need methods to look at both.  If error rate doesn't change for a long time and if weights don't change dramatically
+
+Two neural nets....
+
+One Neural net to decide bet sizes and number of hands based on number of cards left in deck

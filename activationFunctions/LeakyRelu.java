@@ -1,6 +1,8 @@
 package activationFunctions;
 
 public class LeakyRelu extends ActivationFunction{
+
+	private static final long serialVersionUID = 1L;
 	double leakyScale;
 	
 	public LeakyRelu(double scale) {
@@ -16,7 +18,7 @@ public class LeakyRelu extends ActivationFunction{
 	}
 	
 	public double derivative(double output, double[] inputHolder) {
-		if (output>0) {
+		if (output>=0) {
 			return 1;
 		}
 		return leakyScale;
